@@ -1,0 +1,81 @@
+plugins {
+    id 'org.springframework.boot' version '2.1.5.RELEASE'
+    id 'org.sonarqube' version "2.7"
+    id 'jacoco'
+    id 'java'
+}
+
+apply plugin: 'io.spring.dependency-management'
+
+group = 'xp.tdd.supermarket'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+repositories {
+	mavenCentral()
+}
+
+configurations {
+    developmentOnly
+    runtimeClasspath {
+        extendsFrom developmentOnly
+    }
+    cucumberRuntime {
+        extendsFrom runtimeOnly
+        extendsFrom testImplementation
+    }
+}
+
+dependencies {
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+    compile 'org.springframework.boot:spring-boot-starter-data-jpa'
+    runtimeOnly 'org.postgresql:postgresql'
+    compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+    runtimeOnly 'org.flywaydb:flyway-core:5.2.4'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'io.cucumber:cucumber-java:6.10.2'
+    testImplementation 'io.cucumber:cucumber-spring:6.10.2'
+    testImplementation 'org.assertj:assertj-core:3.19.0'
+    testCompile "org.testcontainers:testcontainers:1.15.1"
+    testCompile "org.testcontainers:postgresql:1.15.1"
+
+    compileOnly 'org.projectlombok:lombok:1.18.10'
+    testCompileOnly 'org.projectlombok:lombok:1.18.10'
+    annotationProcessor 'org.projectlombok:lombok:1.18.10'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.10'
+    // https://mvnrepository.com/artifact/com.alibaba/fastjson
+    implementation group: 'com.alibaba', name: 'fastjson', version: '1.2.75'
+}
+
+test {
+    finalizedBy jacocoTestReport
+}
+jacocoTestReport {
+    reports {
+        xml.enabled true
+    }
+    dependsOn test
+}
+
+test {
+    if (project.hasProperty('at')) {
+        doLast {
+            javaexec {
+                main = "io.cucumber.core.cli.Main"
+                classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
+                environment "SPRING_PROFILES_ACTIVE", "test"
+                args = ['--plugin', 'pretty', '--glue', 'cucumber.at', 'src/test/acceptance-test/'.plus(at)]
+            }
+        }
+    }
+}
+
+task cucumber(type: JavaExec) {
+    dependsOn assemble, testClasses
+    main = "io.cucumber.core.cli.Main"
+    classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
+    environment "SPRING_PROFILES_ACTIVE", "test"
+    args = ['--plugin', 'pretty', '--glue', 'cucumber.steps', 'src/test/resources']
+}
